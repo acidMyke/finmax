@@ -15,7 +15,7 @@ export default function VerifyPage() {
   useEffect(() => {
     handleEmailLinkVerification({
       redirectUrl: '/',
-      redirectUrlComplete: '/summary',
+      redirectUrlComplete: '/dashboard',
     })
       .then(() => {
         setVStatus('verified');

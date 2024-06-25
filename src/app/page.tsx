@@ -309,7 +309,7 @@ function RedirectToDashboard({ autoRedirect }: RedirectToDashboardProps) {
   useEffect(() => {
     if (autoRedirect) {
       setTimeout(() => {
-        redirect('/summary');
+        redirect('/dashboard');
       }, 5000);
     }
   }, [autoRedirect, redirect]);
@@ -319,7 +319,7 @@ function RedirectToDashboard({ autoRedirect }: RedirectToDashboardProps) {
       <h2 className='mb-6 text-2xl font-bold'>
         {user!.lastSignInAt ? 'Welcome back,' : 'Welcome,'} {user!.fullName}
       </h2>
-      <button onClick={() => redirect('/summary')} className='btn btn-primary btn-wide rounded-md p-2'>
+      <button onClick={() => redirect('/dashboard')} className='btn btn-primary btn-wide rounded-md p-2'>
         {autoRedirect ? (
           <>
             <span className='loading loading-spinner' />
