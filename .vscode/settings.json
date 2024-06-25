@@ -2,5 +2,14 @@
   "editor.formatOnSave": true,
   "[javascript]": {
     "editor.formatOnSave": true
-  }
+  },
+  "explorer.sortOrder": "filesFirst",
+  "explorer.compactFolders": false,
+  "workbench.editor.customLabels.patterns": {
+    "**/app/*/**/{layout,page,loading,not-found,error,template,default}.{tsx,ts,jsx,js}": "${dirname} ${filename}",
+    "**/app/*/**/route.{ts,js}": "${dirname} ${filename}",
+    "**/app/{layout,page,loading,not-found,error,template,default}.{tsx,ts,jsx,js}": "root ${filename}",
+    "**/app/route.{ts,js}": "root ${filename}"
+  },
+  "workbench.editor.labelFormat": "medium"
 }
