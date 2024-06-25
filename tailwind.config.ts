@@ -19,7 +19,7 @@ export default {
         // inspired by catppuccin mocha
         mocha: {
           'primary': '#7F31ED',
-          'primary-content': '#CBA6F7',
+          'primary-content': '#FFFFFF',
           'secondary': '#1FA5E0',
           'secondary-content': '#89DCEB',
           'accent': '#CBA6F7',
