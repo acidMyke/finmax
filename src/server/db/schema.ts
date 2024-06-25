@@ -24,10 +24,14 @@ import {
  */
 const createTable = pgTableCreator(name => `finmax_${name}`);
 
+export const userAuthMethodEnum = pgEnum('finmax_user_auth_method', ['password', 'email-link']);
+
 export const usersTable = createTable(
   'users',
   {
     id: char('id', { length: 12 }).primaryKey(),
+    email: text('email').notNull().unique(),
+    authMethod: userAuthMethodEnum('auth_method').notNull(),
     clerkId: char('clerk_id', { length: 32 }).notNull().unique(),
     pfp: text('pfp'),
     inactive: boolean('inactive').default(false),
@@ -38,6 +42,7 @@ export const usersTable = createTable(
   table => {
     return {
       clerkIdIndex: index('clerk_id_index').on(table.clerkId),
+      emailIndex: index('email_index').on(table.email),
     };
   },
 );

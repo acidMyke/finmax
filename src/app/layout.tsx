@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs';
 import { GeistSans } from 'geist/font/sans';
 import '~/styles/globals.css';
 import { TRPCReactProvider } from '~/trpc/react';
@@ -10,10 +11,12 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en' data-theme='mocha' className={`${GeistSans.variable}`}>
-      <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang='en' data-theme='mocha' className={`${GeistSans.variable}`}>
+        <body>
+          <TRPCReactProvider>{children}</TRPCReactProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
