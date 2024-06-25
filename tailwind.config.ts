@@ -1,6 +1,7 @@
 import catppuccin from '@catppuccin/daisyui';
 import daisyui, { type Config as DaisyConfig } from 'daisyui';
 import { type Config } from 'tailwindcss';
+import animate from 'tailwindcss-animate';
 import { fontFamily } from 'tailwindcss/defaultTheme';
 
 export default {
@@ -12,7 +13,7 @@ export default {
       },
     },
   },
-  plugins: [daisyui],
+  plugins: [daisyui, animate],
   daisyui: {
     themes: [
       {
