@@ -36,6 +36,7 @@
     "zod": "^3.23.3"
   },
   "devDependencies": {
+    "@catppuccin/daisyui": "^1.1.1",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/eslint": "^8.56.2",
     "@types/node": "^20.11.20",
