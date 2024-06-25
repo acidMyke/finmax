@@ -11,5 +11,6 @@
     "**/app/{layout,page,loading,not-found,error,template,default}.{tsx,ts,jsx,js}": "root ${filename}",
     "**/app/route.{ts,js}": "root ${filename}"
   },
-  "workbench.editor.labelFormat": "medium"
+  "workbench.editor.labelFormat": "medium",
+  "files.autoSave": "onFocusChange"
 }
