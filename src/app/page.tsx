@@ -162,7 +162,7 @@ export default function Home() {
             case !isLoaded:
               return <span className='loading loading-spinner' />;
             case isSignedIn:
-              return <RedirectToDashboard autoRedirect />;
+              return <RedirectToDashboard />;
             case userState.startsWith('iEmail'):
               return (
                 <>
@@ -325,26 +325,28 @@ function EmailForm({ email, onSubmit, isSubmitting, userState, userStateError }:
 
 // #region Redirect to dashboard
 interface RedirectToDashboardProps {
-  autoRedirect: boolean;
+  autoRedirect?: boolean;
 }
 
 function RedirectToDashboard({ autoRedirect }: RedirectToDashboardProps) {
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
   const { push: redirect } = useRouter();
 
   useEffect(() => {
-    if (autoRedirect) {
+    if (autoRedirect && user && isSignedIn) {
       setTimeout(() => {
         redirect('/dashboard');
       }, 5000);
     }
-  }, [autoRedirect, redirect]);
+  }, [autoRedirect, user, redirect]);
+
+  if (!isSignedIn || !user) {
+    return null;
+  }
 
   return (
     <div className='flex h-full flex-col items-center justify-center gap-6'>
-      <h2 className='mb-6 text-2xl font-bold'>
-        {user!.lastSignInAt ? 'Welcome back,' : 'Welcome,'} {user!.fullName}
-      </h2>
+      <h2 className='mb-6 text-2xl font-bold'>Welcome, {user.fullName}</h2>
       <button onClick={() => redirect('/dashboard')} className='btn btn-primary btn-wide rounded-md p-2'>
         {autoRedirect ? (
           <>
