@@ -1,13 +1,13 @@
 'use client';
 
 import { type FormEvent, useState, useCallback, FormEventHandler, useEffect, useMemo } from 'react';
-import { FaCheck, FaChevronLeft, FaChevronRight, FaCross, FaKey, FaLink, FaRegEnvelope } from 'react-icons/fa';
+import { FaCheck, FaChevronLeft, FaChevronRight, FaKey, FaLink, FaRegEnvelope } from 'react-icons/fa';
 import { ImCross } from 'react-icons/im';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSignUp, useSignIn, useUser, useAuth } from '@clerk/nextjs';
 import AppName from '~/app/_components/AppName';
-import { api } from '~/trpc/react';
+import { api } from '~lib/trpc';
 
 type UserState =
   | 'iEmailClean'

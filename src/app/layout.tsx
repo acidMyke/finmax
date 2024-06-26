@@ -1,7 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { GeistSans } from 'geist/font/sans';
 import '~/styles/globals.css';
-import { TRPCReactProvider } from '~/trpc/react';
+import { TRPCReactProvider } from '~lib/trpc';
 
 export const metadata = {
   title: 'FinMax - The best way to manage your finances',
