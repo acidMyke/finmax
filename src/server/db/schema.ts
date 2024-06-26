@@ -25,13 +25,15 @@ import {
  */
 const createTable = pgTableCreator(name => `finmax_${name}`);
 
+export const usersFlagEnum = pgEnum('finmax_user_flag', ['selfDeleted', 'deleted']);
+
 export const usersTable = createTable(
   'users',
   {
     id: char('id', { length: 12 }).primaryKey(),
     clerkId: char('clerk_id', { length: 32 }).notNull().unique(),
     pfp: text('pfp'),
-    inactive: boolean('inactive').default(false),
+    flag: usersFlagEnum('flag'),
     settings: jsonb('settings').default({}),
     defaultAccountId: char('default_account_id', { length: 12 }).references((): AnyPgColumn => accountsTable.id),
     defaultMethodId: char('default_method_id', { length: 12 }).references((): AnyPgColumn => methodsTable.id),

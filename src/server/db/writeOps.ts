@@ -157,18 +157,133 @@ export const userInsertSchema = createInsertSchema(usersTable).omit({ id: true }
 export type UserInsertable = z.infer<typeof userInsertSchema>;
 
 export async function userInsert(user: UserInsertable) {
-  return insertRow('system000000', usersTable, 'users', user);
+  const id = generateId();
+  const ret = await db
+    .insert(usersTable)
+    .values({ ...user, id })
+    .returning()
+    .then(d => (d as any)[0]);
+
+  await db.insert(changesTable).values({
+    by: id,
+    id: generateId(),
+    entity: 'users',
+    entityId: id,
+    version: 1,
+    type: 'insert',
+    dataAfter: user,
+  });
+
+  return ret;
 }
 
 export const userUpdateSchema = userInsertSchema.omit({ clerkId: true }).partial();
 export type UserUpdatable = Partial<Omit<UserInsertable, 'clerkId'>>;
 
-export async function userUpdate<U extends UserUpdatable>(userId: string, update: U) {
-  return patchRow(userId, usersTable, 'users', userId, update);
+export async function userUpdate<U extends UserUpdatable>(idOrClerkId: string, update: U) {
+  const whereSql = idOrClerkId.length === 12 ? eq(usersTable.id, idOrClerkId) : eq(usersTable.clerkId, idOrClerkId);
+
+  if (!Object.keys(update).length) throw new EmptyPatchError();
+
+  type UserTable = typeof usersTable;
+  const selection: { [K in keyof UserUpdatable]: UserTable[K] } = {} as {
+    [K in keyof UserUpdatable]: UserTable[K];
+  };
+
+  for (const key in update) {
+    if (!(key in usersTable)) {
+      console.warn(`Field ${key} not found in users table`);
+      delete update[key];
+      continue;
+    }
+    if (update[key] === undefined) {
+      delete update[key];
+    }
+    // @ts-ignore
+    selection[key] = usersTable[key];
+  }
+
+  const dataBefore = await db
+    .select({ ...selection, id: usersTable.id })
+    .from(usersTable)
+    .where(whereSql)
+    .limit(1)
+    .then(([d]) => d);
+
+  if (!dataBefore) throw new NotFoundInDbError('users', idOrClerkId);
+  const userId = dataBefore.id;
+
+  for (const key in update) {
+    // @ts-ignore
+    if (dataBefore[key] === patchData[key]) {
+      console.warn(`No change in field ${key}`);
+      delete update[key];
+      delete dataBefore[key as keyof typeof dataBefore];
+    }
+  }
+
+  if (!Object.keys(update).length) throw new EmptyPatchError();
+
+  const nextVersion = db.$with('nextVersion').as(
+    db
+      .select({ value: sql`MAX(${changesTable.version}) + 1`.as('value') })
+      .from(changesTable)
+      .where(eq(changesTable.entityId, userId)),
+  );
+
+  const ret = await db
+    .update(usersTable)
+    .set(update)
+    .where(whereSql)
+    .returning(selection)
+    .then(d => (d as any)[0]);
+
+  await db
+    .with(nextVersion)
+    .insert(changesTable)
+    .values({
+      id: generateId(),
+      by: userId,
+      entity: 'users',
+      entityId: userId,
+      version: sql`(select value from ${nextVersion})`,
+      type: 'update',
+      dataBefore: omit(dataBefore, ['id']),
+      dataAfter: update,
+    });
+
+  return ret;
 }
 
-export async function userDelete(userId: string) {
-  return deleteRow(userId, usersTable, 'users', userId);
+export async function userDelete(idOrClerkId: string) {
+  const [ret] = await db
+    .delete(usersTable)
+    .where(idOrClerkId.length === 12 ? eq(usersTable.id, idOrClerkId) : eq(usersTable.clerkId, idOrClerkId))
+    .returning();
+
+  if (!ret) throw new NotFoundInDbError('users', idOrClerkId);
+  const userId = ret.id;
+  const nextVersion = db.$with('nextVersion').as(
+    db
+      .select({ value: sql`MAX(${changesTable.version}) + 1`.as('value') })
+      .from(changesTable)
+      .where(eq(changesTable.entityId, userId)),
+  );
+
+  await db
+    .with(nextVersion)
+    .insert(changesTable)
+    .values({
+      id: generateId(),
+      by: userId,
+      entity: 'users',
+      entityId: userId,
+      version: sql`(select value from ${nextVersion})`,
+      type: 'delete',
+      dataBefore: omit(ret, ['id']),
+    });
+
+  return ret;
 }
 
 // #endregion users
