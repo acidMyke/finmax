@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { Webhook } from 'svix';
 import { userInsert, userUpdate } from '~/server/db/writeOps';
+import mailjetClient from '~/server/mailjet';
 
 export async function POST(req: Request) {
   // You can find this in the Clerk Dashboard -> Webhooks -> choose the endpoint
@@ -55,6 +56,28 @@ export async function POST(req: Request) {
   console.log('Webhook body:', body);
 
   if (eventType === 'email.created') {
+    const { to_email_address, subject, body, body_plain } = data;
+    // Send an email
+    try {
+      const result = await mailjetClient.post('send', { version: 'v3.1' }).request({
+        Messages: [
+          {
+            Subject: subject,
+            TextPart: body_plain,
+            HTMLPart: body,
+            From: {
+              Email: 'noreply_finmax@acidmyke.link',
+              Name: 'Finmax',
+            },
+            To: [{ Email: to_email_address }],
+          },
+        ],
+      });
+      console.log('Email sent:', result.body);
+    } catch (err) {
+      // @ts-ignore
+      console.error('Error sending email:', err, 'statusCode:', err.statusCode);
+    }
   } else if (eventType === 'user.created') {
     const { id } = data;
     userInsert({ clerkId: id });
