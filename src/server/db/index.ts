@@ -2,6 +2,7 @@ import { env } from '~/env';
 import { neon } from '@neondatabase/serverless';
 import { Logger } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
+import * as relations from './relations';
 import * as schema from './schema';
 
 /**
@@ -22,4 +23,4 @@ const logger: Logger = {
 const conn = globalForDb.conn ?? neon(env.DATABASE_URL);
 if (env.NODE_ENV !== 'production') globalForDb.conn = conn;
 
-export const db = drizzle(conn, { schema, logger });
+export const db = drizzle(conn, { schema: { ...schema, ...relations }, logger });

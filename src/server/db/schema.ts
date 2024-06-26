@@ -14,6 +14,7 @@ import {
   numeric,
   varchar,
   AnyPgColumn,
+  primaryKey,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -113,7 +114,6 @@ export const accountsTable = createTable('accounts', {
   label: varchar('label', { length: 64 }).notNull(),
   currency: varchar('currency', { length: 3 }).notNull().default('SGD'),
   iconId: char('icon_id', { length: 12 }).references(() => iconsTable.id),
-  defaultMethodId: char('default_method_id', { length: 12 }).references((): AnyPgColumn => methodsTable.id),
   metadata: jsonb('metadata'),
 });
 
@@ -124,13 +124,24 @@ export const methodsTable = createTable('methods', {
     .references(() => usersTable.id),
   label: varchar('label', { length: 64 }).notNull(),
   autoRegex: text('auto_regex'),
-  accountId: char('account_id', { length: 12 })
-    .notNull()
-    .references(() => accountsTable.id),
   iconId: char('icon_id', { length: 12 }).references(() => iconsTable.id),
   isPublic: boolean('is_public').default(false),
   metadata: jsonb('metadata'),
 });
+
+export const accountsMethodsTable = createTable(
+  'accounts_methods',
+  {
+    accountId: char('account_id', { length: 12 })
+      .notNull()
+      .references(() => accountsTable.id),
+    methodId: char('method_id', { length: 12 })
+      .notNull()
+      .references(() => methodsTable.id),
+    primary: boolean('primary').default(false),
+  },
+  t => ({ pk: primaryKey({ columns: [t.accountId, t.methodId] }) }),
+);
 
 export const categoriesTable = createTable('categories', {
   id: char('id', { length: 12 }).primaryKey(),
