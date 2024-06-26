@@ -34,6 +34,7 @@ type UserState =
 export default function Home() {
   const { mutate, data: userCheckData, isPending: isUserCheckPending } = api.userCheck.useMutation();
   const [userState, setUserState] = useState<UserState>('iEmailClean');
+  const [userStateError, setUserStateError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<{ first: string; last: string } | null>(null);
   const { isSignedIn, isLoaded } = useAuth();
@@ -76,7 +77,10 @@ export default function Home() {
                   setUserState('emailLinkVerified');
                   setTimeout(() => setActive!({ session: res.createdSessionId }), 1000); // To display the verified message
                 }
-              } else user.authMethod = 'password'; // fall back to password, email not found
+              }
+            } else {
+              setUserState('iEmailError');
+              setUserStateError('User not found');
             }
             if (user.authMethod === 'password') {
               setUserState('passwordClean');
@@ -123,9 +127,9 @@ export default function Home() {
     [email, signIn],
   );
 
-  const BackButton = useCallback(({ onClick }: { onClick: () => void }) => {
+  const BackButton = useCallback(({ onClick }: { onClick?: () => void }) => {
     return (
-      <button onClick={onClick} className='btn btn-ghost btn-sm ml-2 mt-2 rounded-md p-2'>
+      <button onClick={onClick} className='btn btn-ghost btn-sm ml-2 mt-2 rounded-md p-2' disabled={!onClick}>
         <FaChevronLeft />
         Back
       </button>
@@ -160,12 +164,24 @@ export default function Home() {
             case isSignedIn:
               return <RedirectToDashboard autoRedirect />;
             case userState.startsWith('iEmail'):
-              return <EmailForm onSubmit={onSubmitEmail} isSubmitting={isUserCheckPending} />;
+              return (
+                <>
+                  <BackButton />
+                  <EmailForm
+                    onSubmit={onSubmitEmail}
+                    isSubmitting={isUserCheckPending}
+                    email={email}
+                    userState={userState}
+                    userStateError={userStateError}
+                  />
+                </>
+              );
             case userState === 'nameClean':
               return (
                 <>
                   <BackButton onClick={() => setUserState('iEmailClean')} />
                   <SignUpNameForm
+                    email={email!}
                     name={name}
                     onName={(name: { first: string; last: string }) => {
                       setName(name);
@@ -267,14 +283,19 @@ export default function Home() {
 interface EmailFormProps {
   onSubmit: FormEventHandler<HTMLFormElement>;
   isSubmitting: boolean;
-  email?: string;
+  email: string | null;
+  userState: UserState;
+  userStateError: string | null;
 }
 
-function EmailForm({ email, onSubmit, isSubmitting }: EmailFormProps) {
+function EmailForm({ email, onSubmit, isSubmitting, userState, userStateError }: EmailFormProps) {
   return (
-    <form className='mt-6 flex h-full flex-col items-center justify-start gap-6' onSubmit={onSubmit}>
+    <form className='flex h-full flex-col items-center justify-start gap-6' onSubmit={onSubmit}>
       <h2 className='mb-6 text-2xl font-bold'>Enter your email</h2>
-      <label className='input input-bordered input-primary flex items-center'>
+      <label
+        className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
+        data-incorrect={userState === 'iEmailError'}
+      >
         <FaRegEnvelope />
         <input
           type='email'
@@ -285,6 +306,7 @@ function EmailForm({ email, onSubmit, isSubmitting }: EmailFormProps) {
           defaultValue={email ?? ''}
         />
       </label>
+      {userState === 'iEmailError' && userStateError && <p className='text-sm text-error'>{userStateError}</p>}
       <button type='submit' disabled={isSubmitting} className='btn btn-primary btn-wide rounded-md p-2'>
         {isSubmitting ? (
           <>
@@ -550,11 +572,12 @@ function PasswordForm({ userState, onSubmit, isSubmitting }: PasswordFormProps) 
 
 // #region Sign Up Name Form
 interface SignUpNameFormProps {
+  email: string;
   name: { first: string; last: string } | null;
   onName: (name: { first: string; last: string }) => void;
 }
 
-function SignUpNameForm({ name, onName }: SignUpNameFormProps) {
+function SignUpNameForm({ email, name, onName }: SignUpNameFormProps) {
   return (
     <form
       className='flex h-full flex-col items-center justify-start gap-4'
@@ -565,7 +588,7 @@ function SignUpNameForm({ name, onName }: SignUpNameFormProps) {
         onName({ first: firstName, last: lastName });
       }}
     >
-      <h2 className='mb-6 text-2xl font-bold'>Enter your name</h2>
+      <h2 className='mb-4 text-2xl font-bold'>Enter your name</h2>
       <label className='input input-bordered input-primary flex items-center'>
         <input
           type='text'
@@ -589,6 +612,7 @@ function SignUpNameForm({ name, onName }: SignUpNameFormProps) {
       <button type='submit' className='btn btn-primary btn-wide rounded-md p-2'>
         Submit
       </button>
+      <small className='text-xs text-neutral-content'>Email: {email}</small>
     </form>
   );
 }

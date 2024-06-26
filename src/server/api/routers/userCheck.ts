@@ -19,12 +19,12 @@ export const userCheckProcedure = publicProcedure
     const { fullName, passwordEnabled, emailAddresses } = usersRes.data[0];
 
     if (passwordEnabled) {
-      return { authMethod: 'password', fullName };
+      return { authMethod: 'password', fullName } as const;
     } else if (emailAddresses.length > 0) {
       const isCurrentEmailVerified =
         emailAddresses.find(emailAddress => emailAddress.emailAddress === email)?.verification?.status === 'verified';
       if (isCurrentEmailVerified) {
-        return { authMethod: 'magic-link', fullName };
+        return { authMethod: 'email-link', fullName } as const;
       } else {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Email not verified' });
       }
