@@ -49,43 +49,46 @@ export default function Home() {
       const email = e.currentTarget.email.value as string;
       setEmail(email);
       setUserState('iEmailSubmitted');
-      mutate(email, {
-        onSuccess: async user => {
-          // existing user, check if using password, or email link / OTP
-          if (user.authMethod === 'email-link') {
-            setUserState('emailLinkSending');
-            const si = await signIn!.create({ identifier: email! });
-            const siff = si.supportedFirstFactors.find(
-              ff => ff.strategy === 'email_link' && ff.safeIdentifier === email,
-            );
-            if (siff && 'emailAddressId' in siff) {
-              const res = await siEmailFlow!.startEmailLinkFlow({
-                emailAddressId: siff.emailAddressId,
-                redirectUrl: `https://3000minipc.acidmyke.link/verify`,
-              });
-              const verification = res.firstFactorVerification;
-              if (verification.status === 'expired') {
-                setUserState('emailLinkExpired');
-              } else if (verification.verifiedFromTheSameClient()) {
-                // User is verified and logined in another tab so close this tab
-                window.close();
-              } else {
-                // User is verified on another device
-                setUserState('emailLinkVerified');
-                setTimeout(() => setActive!({ session: res.createdSessionId }), 1000); // To display the verified message
-              }
-            } else user.authMethod = 'password'; // fall back to password, email not found
-          }
-          if (user.authMethod === 'password') {
-            setUserState('passwordClean');
-          } else {
-          }
+      mutate(
+        { email },
+        {
+          onSuccess: async user => {
+            // existing user, check if using password, or email link / OTP
+            if (user.authMethod === 'email-link') {
+              setUserState('emailLinkSending');
+              const si = await signIn!.create({ identifier: email! });
+              const siff = si.supportedFirstFactors.find(
+                ff => ff.strategy === 'email_link' && ff.safeIdentifier === email,
+              );
+              if (siff && 'emailAddressId' in siff) {
+                const res = await siEmailFlow!.startEmailLinkFlow({
+                  emailAddressId: siff.emailAddressId,
+                  redirectUrl: `https://3000minipc.acidmyke.link/verify`,
+                });
+                const verification = res.firstFactorVerification;
+                if (verification.status === 'expired') {
+                  setUserState('emailLinkExpired');
+                } else if (verification.verifiedFromTheSameClient()) {
+                  // User is verified and logined in another tab so close this tab
+                  window.close();
+                } else {
+                  // User is verified on another device
+                  setUserState('emailLinkVerified');
+                  setTimeout(() => setActive!({ session: res.createdSessionId }), 1000); // To display the verified message
+                }
+              } else user.authMethod = 'password'; // fall back to password, email not found
+            }
+            if (user.authMethod === 'password') {
+              setUserState('passwordClean');
+            } else {
+            }
+          },
+          onError: () => {
+            // User not found,
+            setUserState('nameClean');
+          },
         },
-        onError: () => {
-          // User not found,
-          setUserState('nameClean');
-        },
-      });
+      );
     },
     [mutate, setUserState],
   );
@@ -112,6 +115,7 @@ export default function Home() {
         // new user, verify email
         await signUp!.create({ emailAddress: email!, password, firstName: name!.first, lastName: name!.last });
         setUserState('emailCodeSending');
+        signUp?.createdSessionId;
         await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
         setUserState('emailCodeSent');
       }

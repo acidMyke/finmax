@@ -1,19 +1,36 @@
 import { TRPCError } from '@trpc/server';
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { db } from '~/server/db';
-import { usersTable } from '~/server/db/schema';
+import { clerkClient } from '~/server/clerk';
 import { publicProcedure } from '../trpc';
 
-export const userCheckProcedure = publicProcedure.input(z.string().email()).mutation(async ({ input }) => {
-  const u = await db.query.usersTable.findFirst({
-    where: and(eq(usersTable.email, input), eq(usersTable.inactive, false)),
-    columns: {
-      authMethod: true,
-    },
+export const userCheckProcedure = publicProcedure
+  .input(
+    z.object({
+      email: z.string().email(),
+    }),
+  )
+  .mutation(async ({ input: { email } }) => {
+    // Check if user exists
+    const usersRes = await clerkClient.users.getUserList({ emailAddress: [email] });
+    if (usersRes.totalCount === 0 || !usersRes.data[0]) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+    }
+
+    const { fullName, passwordEnabled, emailAddresses } = usersRes.data[0];
+
+    if (passwordEnabled) {
+      return { authMethod: 'password', fullName };
+    } else if (emailAddresses.length > 0) {
+      const isCurrentEmailVerified =
+        emailAddresses.find(emailAddress => emailAddress.emailAddress === email)?.verification?.status === 'verified';
+      if (isCurrentEmailVerified) {
+        return { authMethod: 'magic-link', fullName };
+      } else {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Email not verified' });
+      }
+    } else {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'No auth method available' });
+    }
   });
-  if (!u) throw new TRPCError({ code: 'NOT_FOUND', message: `User with email ${input} not found` });
-  return u;
-});
 
 export default userCheckProcedure;
