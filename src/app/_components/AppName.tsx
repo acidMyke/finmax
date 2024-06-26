@@ -1,6 +1,10 @@
-export default function AppName() {
+interface AppNameProps {
+  className?: string;
+}
+
+export default function AppName({ className = 'h-20' }: AppNameProps) {
   return (
-    <svg width='204' height='74' viewBox='0 0 204 74' fill='none' xmlns='http://www.w3.org/2000/svg'>
+    <svg viewBox='0 0 204 74' fill='none' xmlns='http://www.w3.org/2000/svg' className={'!aspect-[11/4] ' + className}>
       <path
         fillRule='evenodd'
         clipRule='evenodd'

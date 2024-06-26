@@ -1,5 +1,9 @@
-export default function AppIcon() {
-  <svg width='78' height='74' viewBox='0 0 78 74' fill='none' xmlns='http://www.w3.org/2000/svg'>
+interface AppIconProps {
+  className?: string;
+}
+
+export default function AppIcon({ className = 'h-20' }: AppIconProps) {
+  <svg viewBox='0 0 78 74' fill='none' xmlns='http://www.w3.org/2000/svg' className={'!aspect-[21/20] ' + className}>
     <path
       fillRule='evenodd'
       clipRule='evenodd'
