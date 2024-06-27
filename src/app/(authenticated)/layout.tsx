@@ -1,6 +1,6 @@
 'use client';
 
-import { AiOutlineMenuFold, AiOutlineMenuUnfold } from 'react-icons/ai';
+import { FaChevronDown } from 'react-icons/fa6';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -50,15 +50,10 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
         </div>
         <div className='navbar-end'>
           <details className='group dropdown dropdown-end'>
-            <summary className='btn btn-ghost swap group-open:swap-active'>
-              <span className='swap-off'>
-                <AiOutlineMenuUnfold size={20} />
-              </span>
-              <span className='swap-on'>
-                <AiOutlineMenuFold size={20} />
-              </span>
+            <summary className='btn btn-ghost transition-transform duration-200 group-open:rotate-180'>
+              <FaChevronDown size={20} />
             </summary>
-            <div className='dropdown-content w-52'>
+            <div className='menu dropdown-content w-52 rounded-lg bg-base-200'>
               {routeDefinitions.map(def => (
                 <NavButton key={def.route} {...def} />
               ))}
@@ -66,7 +61,7 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
           </details>
         </div>
       </header>
-      <main className='px-10 py-4'>{children}</main>
+      <main className='bg-gradient-to-b from-primary to-base-100 to-10% px-10 py-4'>{children}</main>
     </>
   );
 }
