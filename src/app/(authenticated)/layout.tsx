@@ -1,10 +1,13 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { FaCheck, FaChevronRight, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaChevronDown } from 'react-icons/fa6';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { usePathname, useRouter } from 'next/navigation';
+import { useClerk, useUser } from '@clerk/nextjs';
 import AppName from '../_components/AppName';
+import { sleep } from '../_lib/utils';
 
 const routeDefinitions = [
   {
@@ -34,7 +37,11 @@ export const NavButton = (def: (typeof routeDefinitions)[number]) => {
 };
 
 export default function Authenticatedlayout({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { push: redirect } = useRouter();
+  const { user } = useUser();
+  const [signOutState, setSignedOut] = useState<'initial' | 'signing-out' | 'signed-out'>('initial');
+  const { signOut } = useClerk();
+  const signOutModalRef = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
 
   // Render the header
@@ -53,10 +60,65 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
             <summary className='btn btn-ghost transition-transform duration-200 group-open:rotate-180'>
               <FaChevronDown size={20} />
             </summary>
-            <div className='menu dropdown-content w-52 rounded-lg bg-base-200'>
+            <div className='menu dropdown-content gap-y-4 rounded-lg bg-base-200'>
               {routeDefinitions.map(def => (
                 <NavButton key={def.route} {...def} />
               ))}
+              <div className='divider !my-0' />
+              {/* Indicate signin as */}
+              <Link href='/settings' passHref legacyBehavior>
+                <a className='btn btn-ghost grid grid-flow-col grid-rows-2 p-2'>
+                  <span className='text-start text-lg font-bold'>{user?.fullName}</span>
+                  <span className='text-xs'>{user?.primaryEmailAddress?.emailAddress}</span>
+                  <FaCog size={20} className='row-span-2' />
+                  <FaChevronRight size={20} className='row-span-2' />
+                </a>
+              </Link>
+              <button
+                onClick={() => {
+                  signOutModalRef.current?.showModal();
+                }}
+                className='btn btn-error'
+              >
+                <FaSignOutAlt size={20} /> Sign Out
+              </button>
+              <dialog ref={signOutModalRef} className='modal overflow-visible'>
+                <div className='modal-box'>
+                  <h3 className='mb-4 text-lg font-bold'>Are you sure you want to sign out?</h3>
+                  {signOutState === 'initial' ? (
+                    <div className='modal-action'>
+                      <button
+                        className='btn btn-error transition-[width]'
+                        onClick={async () => {
+                          setSignedOut('signing-out');
+                          await sleep(500);
+                          await signOut();
+                          setSignedOut('signed-out');
+                          await sleep(500);
+                          redirect('/');
+                        }}
+                      >
+                        Yes
+                      </button>
+                      <button onClick={() => signOutModalRef.current?.close()} className='btn btn-success'>
+                        No
+                      </button>
+                    </div>
+                  ) : signOutState === 'signing-out' ? (
+                    <div className='flex flex-col items-center justify-center'>
+                      <span className='loading loading-spinner loading-lg' />
+                      <span className='text-lg'>Signing out...</span>
+                    </div>
+                  ) : (
+                    signOutState === 'signed-out' && (
+                      <div className='flex flex-col items-center justify-center'>
+                        <FaCheck size={20} className='animate-in spin-in-6' />
+                        <span className='text-lg'>Signed out</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </dialog>
             </div>
           </details>
         </div>
