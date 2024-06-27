@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   console.log(`Webhook with and ID of ${id} and type of ${eventType}`);
   console.log('Webhook body:', body);
 
-  if (eventType === 'email.created') {
+  if (eventType === 'email.created' && data.delivered_by_clerk === false) {
     const { to_email_address, subject, body, body_plain } = data;
     // Send an email
     try {
