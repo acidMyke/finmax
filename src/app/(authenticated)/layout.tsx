@@ -95,7 +95,7 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
                           await signOut();
                           setSignedOut('signed-out');
                           await sleep(500);
-                          redirect('/');
+                          redirect('/signed-out');
                         }}
                       >
                         Yes

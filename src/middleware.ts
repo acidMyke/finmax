@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const isPublicRoute = createRouteMatcher(['/api/trpc(.*)', '/api/clerk', '/', '/verify']);
+const isPublicRoute = createRouteMatcher(['/api/trpc(.*)', '/api/clerk', '/', '/verify', '/signed-out']);
 
 export default clerkMiddleware((auth, req) => {
   const originUrl = new URL(req.url).origin;
