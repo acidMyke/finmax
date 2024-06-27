@@ -28,6 +28,8 @@ export default {
           'neutral': '#3C3C5D',
           'neutral-content': '#C1C1D7',
           'base-100': '#14141F',
+          'base-200': '#1e1e2f',
+          'base-300': '#27273f',
           'info': '#89DCEB',
           'info-content': '#1B6458',
           'success': '#A6E3A1',
