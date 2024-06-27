@@ -127,7 +127,7 @@ export const NavButtons = ({ fullName, emailAddress, showSignOutModal }: NavButt
     {/* Sign out Button */}
     <li className='px-2'>
       <button
-        className='w-full rounded-btn bg-error p-2 text-left text-error-content'
+        className='w-full rounded-btn bg-error p-2 text-left text-error-content hover:bg-error-content hover:text-error'
         onClick={() => showSignOutModal()}
       >
         <FaSignOutAlt size={20} />
