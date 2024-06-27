@@ -38,8 +38,8 @@ export default function Home() {
   const [email, setEmail] = useState<string | null>(null);
   const [name, setName] = useState<{ first: string; last: string } | null>(null);
   const { isSignedIn, isLoaded } = useAuth();
-  const { signIn, setActive } = useSignIn();
   const { signUp } = useSignUp();
+  const { signIn, setActive } = useSignIn();
 
   const suEmailFlow = signUp?.createEmailLinkFlow();
   const siEmailFlow = signIn?.createEmailLinkFlow();
@@ -124,7 +124,7 @@ export default function Home() {
         setUserState('emailCodeSent');
       }
     },
-    [email, signIn],
+    [email, signIn, signUp, userCheckData],
   );
 
   const BackButton = useCallback(({ onClick }: { onClick?: () => void }) => {
