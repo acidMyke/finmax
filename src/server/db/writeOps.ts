@@ -215,7 +215,7 @@ export async function userUpdate<U extends UserUpdatable>(idOrClerkId: string, u
 
   for (const key in update) {
     // @ts-ignore
-    if (dataBefore[key] === patchData[key]) {
+    if (dataBefore[key] === update[key]) {
       console.warn(`No change in field ${key}`);
       delete update[key];
       delete dataBefore[key as keyof typeof dataBefore];
