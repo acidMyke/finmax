@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { FaCheck } from 'react-icons/fa';
 import { ImCross } from 'react-icons/im';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useClerk } from '@clerk/nextjs';
 import { EmailLinkErrorCode, isEmailLinkError } from '@clerk/nextjs/errors';
 import AppName from '../_components/AppName';
@@ -11,12 +12,16 @@ import AppName from '../_components/AppName';
 export default function VerifyPage() {
   const { handleEmailLinkVerification } = useClerk();
   const [vStatus, setVStatus] = useState<'loading' | 'expired' | 'verified' | 'failed'>('loading');
+  const { push: redirect } = useRouter();
 
   useEffect(() => {
-    handleEmailLinkVerification({
-      redirectUrl: '/',
-      redirectUrlComplete: '/dashboard',
-    })
+    handleEmailLinkVerification(
+      {
+        redirectUrl: '/',
+        redirectUrlComplete: '/dashboard',
+      },
+      to => (redirect(to), Promise.resolve()),
+    )
       .then(() => {
         setVStatus('verified');
         // This is the other device, the auth is complete
@@ -38,9 +43,8 @@ export default function VerifyPage() {
       <section className='mt-12 flex h-80 w-[388px] flex-col items-center justify-start gap-6 rounded-lg bg-neutral-content/10 pt-6'>
         {vStatus === 'loading' && (
           <>
-            <h2 className='text-2xl font-bold'>
-              Verifying <span className='loading loading-dots' />{' '}
-            </h2>
+            <h2 className='text-2xl font-bold'>Verifying</h2>
+            <span className='loading loading-spinner loading-lg' />
           </>
         )}
         {vStatus === 'expired' && (
