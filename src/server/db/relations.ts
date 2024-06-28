@@ -18,7 +18,7 @@ export const usersRelations = relations(usersTable, ({ one, many }) => ({
   methods: many(methodsTable),
   categories: many(categoriesTable),
   payees: many(payeesTable),
-  subscription: many(subscriptionsTable),
+  subscriptions: many(subscriptionsTable),
 }));
 
 export const changesRelations = relations(changesTable, ({ one }) => ({
