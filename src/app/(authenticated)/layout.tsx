@@ -108,9 +108,7 @@ export const NavButtons = ({ fullName, emailAddress, showSignOutModal }: NavButt
     {/* Setting Button */}
     <li className='px-2'>
       <Link href='/settings' passHref legacyBehavior>
-        <a className='!grid h-min grid-flow-col grid-cols-[200px_min-content_min-content] grid-rows-2 gap-0 p-0 text-start max-lg:p-2'>
-          {/* <span className='truncate text-lg font-bold'>{fullName}</span>
-          <span className='truncate text-xs'>{emailAddress}</span> */}
+        <a className='!grid h-min max-h-14 grid-flow-col grid-cols-[200px_min-content_min-content] grid-rows-2 gap-0 p-0 text-start max-lg:p-2'>
           {fullName ? (
             <>
               <span className='truncate text-lg font-bold lg:text-center'>{fullName}</span>
@@ -155,11 +153,13 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
   // Render the header
   return (
     <>
+      {/* Full Size Background */}
+      {/* <div className='fixed inset-0 -z-50 bg-gradient-to-b from-primary from-15% to-base-100 to-20%' /> */}
       <header className='navbar flex min-h-min items-center justify-between bg-primary px-4 text-primary-content'>
         <div className='navbar-start min-h-min w-min'>
           <Link href='/dashboard' passHref legacyBehavior>
             <a className='btn btn-ghost min-h-min rounded-btn'>
-              <AppName className='h-12' color='white' />
+              <AppName className='h-10 lg:h-12' color='white' />
             </a>
           </Link>
         </div>
@@ -175,8 +175,8 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
               dropdownMenuRef.current?.removeAttribute('open');
             }}
           >
-            <summary role='button' className='btn btn-ghost'>
-              <FaChevronDown size={20} />
+            <summary role='button' className='btn btn-ghost btn-sm'>
+              <FaChevronDown size={18} />
             </summary>
             <div className='menu dropdown-content menu-lg w-72 gap-y-4 rounded-box bg-base-200 text-left'>
               <ul>
@@ -186,9 +186,7 @@ export default function Authenticatedlayout({ children }: { children: React.Reac
           </details>
         </div>
       </header>
-      <main className='bg-gradient-to-b from-primary to-base-100 to-10% px-10 py-4'>
-        {user ? children : <span className='loading mx-auto block w-28 ' />}
-      </main>
+      <main className='h-[200vh] px-10 py-4'>{user && children}</main>
 
       <dialog ref={signOutModalRef} className='modal overflow-visible'>
         <div className='modal-box'>
