@@ -52,7 +52,7 @@ export function Dropdown({ options, option: option, onChange, classNames, addTra
         {addTrailingArrow && <FaChevronDown size={16} className='transition-transform group-open/dd:rotate-180' />}
       </summary>
       {options.length > 0 && (
-        <ul className={twMerge('menu dropdown-content', ulElement)}>
+        <ul className={twMerge('fancy-scrollbar menu dropdown-content', ulElement)}>
           {options.map(option => (
             <li
               key={typeof option === 'string' ? option : option.id}
