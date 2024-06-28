@@ -161,7 +161,8 @@ export const payeesTable = createTable('payees', {
   userId: char('user_id', { length: 12 })
     .notNull()
     .references(() => usersTable.id),
-  name: varchar('name', { length: 64 }).notNull(),
+  name: varchar('name', { length: 64 }),
+  accountId: char('account_id', { length: 12 }).references(() => accountsTable.id),
   notes: text('notes'),
 });
 
