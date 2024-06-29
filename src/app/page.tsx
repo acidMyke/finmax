@@ -221,7 +221,6 @@ function EmailForm() {
           throw e;
         }
       }
-      setStep('signUpNameField');
     },
   });
 
