@@ -23,15 +23,9 @@ import { z } from 'zod';
 import AppName from './_components/AppName';
 import { sleep } from './_lib/utils';
 
-type AuthStep =
-  | 'emailField'
-  | 'signUpNameField'
-  | 'signUpMethodSelect'
-  | 'passwordField'
-  | 'emailLink'
-  | 'forgetPassword';
+type AuthStep = 'emailField' | 'signUpNameField' | 'signUpMethodSelect' | 'passwordField' | 'emailLink';
 
-const reverseAuthStep = (step: AuthStep, isRegistered: boolean) => {
+const reverseAuthStep = (step: AuthStep, isRegistered: boolean | null) => {
   switch (step) {
     case 'emailField':
       return null;
@@ -43,20 +37,18 @@ const reverseAuthStep = (step: AuthStep, isRegistered: boolean) => {
       return isRegistered ? 'signUpMethodSelect' : 'signUpNameField';
     case 'emailLink':
       return isRegistered ? 'passwordField' : 'signUpNameField';
-    case 'forgetPassword':
-      return 'passwordField';
   }
 };
 
 interface AuthFlowContextData {
-  email?: string;
-  name?: { first: string; last: string };
-  signUpMethod?: 'email-link' | 'password';
-  isRegistered: boolean;
+  email: string | null;
+  name: { first: string; last: string } | null;
+  signUpMethod: 'email-link' | 'password' | null;
+  isRegistered: boolean | null;
   step: AuthStep;
-  stepMeta?: {
+  stepMeta: {
     clerkEmailId?: string;
-  };
+  } | null;
   setEmail: (email: string) => void;
   setName: (name: { first: string; last: string }) => void;
   setSignUpMethod: (method: 'email-link' | 'password') => void;
@@ -68,11 +60,11 @@ const AuthFlowContext = createContext<AuthFlowContextData>(null as unknown as Au
 
 export default function RootPage() {
   const [step, setStepInternal] = useState<AuthStep>('emailField');
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState({ first: '', last: '' });
-  const [signUpMethod, setSignUpMethod] = useState<'email-link' | 'password'>('email-link');
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [stepMeta, setStepMeta] = useState<{ clerkEmailId?: string }>({});
+  const [email, setEmail] = useState<AuthFlowContextData['email']>(null);
+  const [name, setName] = useState<AuthFlowContextData['name']>({ first: '', last: '' });
+  const [signUpMethod, setSignUpMethod] = useState<AuthFlowContextData['signUpMethod']>(null);
+  const [isRegistered, setIsRegistered] = useState<AuthFlowContextData['isRegistered']>(false);
+  const [stepMeta, setStepMeta] = useState<AuthFlowContextData['stepMeta']>(null);
   const { isLoaded, isSignedIn } = useUser();
 
   const setStep: AuthFlowContextData['setStep'] = useCallback(
@@ -105,6 +97,7 @@ export default function RootPage() {
             signUpMethod,
             isRegistered,
             step,
+            stepMeta,
             setEmail,
             setName,
             setSignUpMethod,
@@ -123,7 +116,6 @@ export default function RootPage() {
               signUpMethodSelect: <SignUpMethodSelect />,
               passwordField: <PasswordField />,
               emailLink: <EmailLink />,
-              forgetPassword: <ForgetPassword />,
             }[step]
           )}
         </AuthFlowContext.Provider>
@@ -193,18 +185,30 @@ function EmailForm() {
         // IF user exists, it will return the user's name and auth method.
         // IF user does not exist, it will throw an error.
         const si = await signIn!.create({ identifier: email });
+        setIsRegistered(true);
         // user exists
         // Find their supported auth method
         const { supportedFirstFactors } = si;
-        const ff = supportedFirstFactors.find(ff => ff.strategy === 'email_link' && ff.safeIdentifier === email);
-        // Testing for ff.strategy === 'email_link' is a bit redundant
-        // but its here because TypeScript is not smart enough to know that the find function will return a EmailLinkFactor | undefined.
-        if (ff && ff.strategy === 'email_link') {
-          setIsRegistered(true);
-          // When the EmailLink component is created, it will send the email link in useEffect.
+        const passFf = supportedFirstFactors.find(ff => ff.strategy === 'password');
+        if (passFf) {
+          // User has password auth method
+          setStep('passwordField');
+          return;
+        }
+        // All users should have email_link auth method as their email is verified.
+        // Find the emailAddressId for the current email, typescript is not smart enough to know that ff is EmailLinkFactor | undefined
+        // And Clerk SDK don't export types of EmailLinkFactor, so we have to manually extract it.
+        type EmailLinkFactor = Extract<(typeof supportedFirstFactors)[number], { strategy: 'email_link' }>;
+        const ff = supportedFirstFactors.find(ff => ff.strategy === 'email_link' && ff.safeIdentifier === email) as
+          | EmailLinkFactor
+          | undefined;
+        if (ff) {
+          // Use email link auth method
           setStep('emailLink', { clerkEmailId: ff.emailAddressId });
           return;
         }
+        console.error('No supported auth method found', supportedFirstFactors); // This should never happen
+        throw new Error('No supported auth method found');
       } catch (e) {
         if (isClerkAPIResponseError(e)) {
           const error = e.errors[0]!;
@@ -602,6 +606,11 @@ function PasswordField() {
             </button>
           )}
         />
+        {isRegistered && (
+          <button className='btn btn-ghost btn-sm' onClick={() => setStep('emailLink')}>
+            Use email link instead
+          </button>
+        )}
         <small className='text-xs text-neutral-content'>Email: {email}</small>
       </form>
     </>
@@ -745,8 +754,3 @@ function EmailLink() {
   );
 }
 // #endregion
-
-// #region ForgetPassword
-function ForgetPassword() {
-  return <div />;
-}
