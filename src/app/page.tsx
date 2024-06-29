@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useContext, createContext, useMemo, useCallback } from 'react';
-import { FaChevronLeft, FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaKey, FaLink, FaRegEnvelope, FaSignInAlt, FaSignOutAlt } from 'react-icons/fa';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useClerk, useSignIn, useSignUp, useUser } from '@clerk/nextjs';
@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { api } from '~lib/trpc';
 import AppName from './_components/AppName';
 
-type AuthStep = 'emailField' | 'signUpNameField' | 'signUpMethodSelect' | 'passwordField' | 'emailLinkAwaiting';
+type AuthStep = 'emailField' | 'signUpNameField' | 'signUpMethodSelect' | 'passwordField' | 'emailLinkAwait';
 // | 'forgetPassword';
 
 const reverseAuthStep = (step: AuthStep, isRegistered: boolean) => {
@@ -26,7 +26,7 @@ const reverseAuthStep = (step: AuthStep, isRegistered: boolean) => {
       return 'signUpNameField';
     case 'passwordField':
       return isRegistered ? 'emailField' : 'signUpMethodSelect';
-    case 'emailLinkAwaiting':
+    case 'emailLinkAwait':
       return isRegistered ? 'passwordField' : 'signUpMethodSelect';
     // case 'forgetPassword':
     //   return 'emailField';
@@ -103,7 +103,7 @@ export default function RootPage() {
           }}
         >
           {!isLoaded ? (
-            <div className='skeleton h-full w-full' />
+            <div className='skeleton h-full w-full !bg-transparent' />
           ) : isSignedIn ? (
             <SignedInPrompt />
           ) : (
@@ -112,7 +112,7 @@ export default function RootPage() {
               signUpNameField: <SignUpNameForm />,
               signUpMethodSelect: <SignUpMethodSelect />,
               passwordField: <PasswordField />,
-              emailLinkAwaiting: <EmailLinkAwaiting />,
+              emailLinkAwait: <EmailLinkAwait />,
             }[step]
           )}
         </AuthFlowContext.Provider>
@@ -146,7 +146,7 @@ function SignedInPrompt() {
 
   return (
     <div className='flex h-full flex-col items-center justify-center gap-6'>
-      <h2 className='mb-6 text-2xl font-bold'>Welcome back, {user.fullName}</h2>
+      <h2 className='mb-4 text-2xl font-bold'>Welcome back, {user.fullName}</h2>
       <button onClick={() => redirect('/dashboard')} className='btn btn-primary btn-wide rounded-md p-2'>
         <FaSignInAlt size={20} />
         Go to Dashboard
@@ -187,7 +187,7 @@ function EmailForm() {
         if (ff && ff.strategy === 'email_link') {
           setIsRegistered(true);
           // When the EmailLinkAwaiting component is created, it will send the email link in useEffect.
-          setStep('emailLinkAwaiting', { clerkEmailId: ff.emailAddressId });
+          setStep('emailLinkAwait', { clerkEmailId: ff.emailAddressId });
           return;
         }
       } catch (e) {
@@ -207,14 +207,14 @@ function EmailForm() {
     <>
       <BackButton />
       <form
-        className='flex h-full flex-col items-center justify-start gap-6'
+        className='flex h-full flex-col items-center justify-start gap-4'
         onSubmit={e => {
           e.preventDefault();
           e.stopPropagation();
           form.handleSubmit();
         }}
       >
-        <h2 className='mb-6 text-2xl font-bold'>Enter your email</h2>
+        <h2 className='mb-4 text-2xl font-bold'>Enter your email</h2>
         <form.Field
           name='email'
           children={field => (
@@ -222,6 +222,7 @@ function EmailForm() {
               className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
               data-incorrect={field.state.meta.errors.length > 0}
             >
+              <FaRegEnvelope />
               <input
                 type='email'
                 placeholder='Email'
@@ -268,13 +269,153 @@ function EmailForm() {
 
 // #region SignUpNameForm
 function SignUpNameForm() {
-  return <div />;
+  const { email, name, setName, setStep } = useContext(AuthFlowContext);
+  const form = useForm({
+    defaultValues: { first: name?.first ?? '', last: name?.last ?? '' },
+    validatorAdapter: zodValidator(),
+    validators: {
+      onChange: z.object({
+        first: z.string().min(2, 'First name must be at least 2 characters long'),
+        last: z.string().min(2, 'Last name must be at least 2 characters long'),
+      }),
+    },
+    onSubmit: ({ value: { first, last } }) => {
+      setName({ first, last });
+      setStep('signUpMethodSelect');
+    },
+  });
+
+  return (
+    <>
+      <BackButton />
+      <form
+        className='flex h-full flex-col items-center justify-start gap-4'
+        onSubmit={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+      >
+        <h2 className='mb-4 text-xl font-bold'>Enter your name</h2>
+        <form.Field
+          name='first'
+          children={field => (
+            <label
+              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
+              data-incorrect={field.state.meta.errors.length > 0}
+            >
+              <input
+                type='text'
+                placeholder='First Name'
+                className='ml-2 grow'
+                id={field.name}
+                name={field.name}
+                value={field.state.value}
+                onChange={e => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors
+                ? field.state.meta.errors.map((error, i) => (
+                    <em role='alert' key={i} className='text-xs text-error'>
+                      {error}
+                    </em>
+                  ))
+                : null}
+            </label>
+          )}
+        />
+        <form.Field
+          name='last'
+          children={field => (
+            <label
+              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
+              data-incorrect={field.state.meta.errors.length > 0}
+            >
+              <input
+                type='text'
+                placeholder='Last Name'
+                className='ml-2 grow'
+                id={field.name}
+                name={field.name}
+                value={field.state.value}
+                onChange={e => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors
+                ? field.state.meta.errors.map((error, i) => (
+                    <em role='alert' key={i} className='text-xs text-error'>
+                      {error}
+                    </em>
+                  ))
+                : null}
+            </label>
+          )}
+        />
+        <form.Subscribe
+          selector={state => [state.isSubmitting, state.canSubmit]}
+          children={([isSubmitting, canSubmit]) => (
+            <button
+              type='submit'
+              className='btn btn-primary btn-wide rounded-md p-2'
+              disabled={isSubmitting || !canSubmit}
+            >
+              {isSubmitting ? (
+                <>
+                  Submitting
+                  <span className='loading loading-dots' />
+                </>
+              ) : (
+                'Submit'
+              )}
+            </button>
+          )}
+        />
+        <small className='text-xs text-neutral-content'>Email: {email}</small>
+      </form>
+    </>
+  );
 }
 // #endregion
 
 // #region SignUpMethodSelect
 function SignUpMethodSelect() {
-  return <div />;
+  const { email, name, setSignUpMethod, setStep } = useContext(AuthFlowContext);
+
+  return (
+    <>
+      <BackButton />
+      <div className='flex h-full flex-col items-center justify-start gap-4'>
+        <h2 className='mb-4 text-xl font-bold'>Choose a sign up method</h2>
+        <button
+          className='group btn btn-lg btn-wide gap-2 hover:text-primary'
+          onClick={() => {
+            setSignUpMethod('email-link');
+            setStep('emailLinkAwait');
+          }}
+        >
+          <FaLink />
+          <span className='text-lg font-bold'>Use Email link</span>
+          <FaChevronRight className='duration-75 motion-safe:group-hover:animate-pulse' />
+        </button>
+        <button
+          className='group btn btn-lg btn-wide gap-2 hover:text-primary'
+          onClick={() => {
+            setSignUpMethod('password');
+            setStep('passwordField');
+          }}
+        >
+          <FaKey />
+          <span className='text-lg font-bold'>Use Password</span>
+          <FaChevronRight className='duration-75 motion-safe:group-hover:animate-pulse' />
+        </button>
+        <div className='text-center'>
+          <small className='text-xs text-neutral-content'>Email: {email}</small>
+          <br />
+          <small className='text-xs text-neutral-content'>
+            Name: {name!.first} {name!.last}
+          </small>
+        </div>
+      </div>
+    </>
+  );
 }
 // #endregion
 
@@ -284,8 +425,8 @@ function PasswordField() {
 }
 // #endregion
 
-// #region EmailLinkAwaiting
-function EmailLinkAwaiting() {
+// #region EmailLinkAwait
+function EmailLinkAwait() {
   return <div />;
 }
 // #endregion
