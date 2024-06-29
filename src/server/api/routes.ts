@@ -10,33 +10,6 @@ import { createTRPCRouter, publicProcedure, authenticatedProcedure } from './trp
 const idSchema = z.string().length(12, 'id must be 12 characters long');
 // #endregion
 
-// #region userCheck
-const userCheckProcedure = publicProcedure
-  .input(z.object({ email: z.string().email() }))
-  .mutation(async ({ input: { email } }) => {
-    // Check if user exists
-    const usersRes = await clerkClient.users.getUserList({ emailAddress: [email] });
-    if (usersRes.totalCount === 0 || !usersRes.data[0]) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-    }
-
-    const { fullName, passwordEnabled, emailAddresses } = usersRes.data[0];
-
-    if (passwordEnabled) {
-      return { authMethod: 'password', fullName } as const;
-    } else if (emailAddresses.length > 0) {
-      const isCurrentEmailVerified =
-        emailAddresses.find(emailAddress => emailAddress.emailAddress === email)?.verification?.status === 'verified';
-      if (isCurrentEmailVerified) {
-        return { authMethod: 'email-link', fullName } as const;
-      } else {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Email not verified' });
-      }
-    } else {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'No auth method available' });
-    }
-  });
-
 const usersRouter = createTRPCRouter({
   idsLabels: authenticatedProcedure.query(async ({ ctx: { auth, db } }) => {
     const { userId: clerkUserId } = auth;
@@ -145,7 +118,6 @@ const transactionsRouter = createTRPCRouter({
 });
 
 const routes = {
-  userCheck: userCheckProcedure,
   users: usersRouter,
   transactions: transactionsRouter,
 } satisfies Parameters<typeof createTRPCRouter>[0];

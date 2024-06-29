@@ -39,7 +39,7 @@
     "superjson": "^2.2.1",
     "svix": "^1.24.0",
     "tailwind-merge": "^2.3.0",
-    "zod": "^3.23.3"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@catppuccin/daisyui": "^1.1.1",

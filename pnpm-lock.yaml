@@ -84,7 +84,7 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
       zod:
-        specifier: ^3.23.3
+        specifier: ^3.23.8
         version: 3.23.8
     devDependencies:
       '@catppuccin/daisyui':
