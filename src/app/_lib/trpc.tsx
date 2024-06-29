@@ -8,7 +8,14 @@ import { type inferRouterInputs, type inferRouterOutputs } from '@trpc/server';
 import SuperJSON from 'superjson';
 import { type AppRouter } from '~/server/api/root';
 
-const createQueryClient = () => new QueryClient();
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      },
+    },
+  });
 
 let clientQueryClientSingleton: QueryClient | undefined = undefined;
 const getQueryClient = () => {
