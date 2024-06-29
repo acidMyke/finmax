@@ -131,6 +131,7 @@ function BackButton({ disabled }: { disabled?: boolean }) {
 
   return (
     <button
+      type='button'
       className='btn btn-ghost btn-sm ml-2 mt-2 rounded-md p-2'
       disabled={!backStep || disabled}
       onClick={onClick}
@@ -154,11 +155,11 @@ function SignedInPrompt() {
   return (
     <div className='flex h-full flex-col items-center justify-center gap-6'>
       <h2 className='mb-4 text-2xl font-bold'>Welcome back, {user.fullName}</h2>
-      <button onClick={() => redirect('/dashboard')} className='btn btn-primary btn-wide rounded-md p-2'>
+      <button type='button' onClick={() => redirect('/dashboard')} className='btn btn-primary btn-wide rounded-md p-2'>
         <FaSignInAlt size={20} />
         Go to Dashboard
       </button>
-      <button onClick={() => signOut()} className='btn btn-error btn-wide rounded-md p-2'>
+      <button type='button' onClick={() => signOut()} className='btn btn-error btn-wide rounded-md p-2'>
         <FaSignOutAlt size={20} />
         Sign Out
       </button>
@@ -406,6 +407,7 @@ function SignUpMethodSelect() {
       <div className='flex h-full flex-col items-center justify-start gap-4'>
         <h2 className='mb-4 text-xl font-bold'>Choose a sign up method</h2>
         <button
+          type='button'
           className='group btn btn-lg btn-wide gap-2 hover:text-primary'
           onClick={() => {
             setSignUpMethod('email-link');
@@ -417,6 +419,7 @@ function SignUpMethodSelect() {
           <FaChevronRight className='duration-75 motion-safe:group-hover:animate-pulse' />
         </button>
         <button
+          type='button'
           className='group btn btn-lg btn-wide gap-2 hover:text-primary'
           onClick={() => {
             setSignUpMethod('password');
@@ -607,7 +610,7 @@ function PasswordField() {
           )}
         />
         {isRegistered && (
-          <button className='btn btn-ghost btn-sm' onClick={() => setStep('emailLink')}>
+          <button type='button' className='btn btn-ghost btn-sm' onClick={() => setStep('emailLink')}>
             Use email link instead
           </button>
         )}
@@ -696,11 +699,11 @@ function EmailLink() {
             <h2 className='mb-4 text-xl font-bold'>Is email correct?</h2>
             <p className='text-center'>Email: {email}</p>
             <p className='text-center'>We will send you an email shortly to verify your email address.</p>
-            <button className='btn btn-success rounded-md p-2' onClick={sentAndVerifyEmail}>
+            <button type='button' className='btn btn-success rounded-md p-2' onClick={sentAndVerifyEmail}>
               <FaCheck />
               Yes, send email
             </button>
-            <button className='btn btn-error rounded-md p-2' onClick={() => setStep('emailField')}>
+            <button type='button' className='btn btn-error rounded-md p-2' onClick={() => setStep('emailField')}>
               <FaXmark />
               No, redo everything
             </button>
