@@ -62,7 +62,7 @@ export default function VerifyPage() {
             <div className='h-12 w-12 rounded-full bg-success p-2 text-success-content animate-in'>
               <FaCheck size='2rem' />
             </div>
-            <p className='text-neutral-content'>This window will close in 5 seconds</p>
+            <p className='text-neutral-content'>You will be redirected to the dashboard shortly.</p>
           </>
         )}
         {vStatus === 'failed' && (
