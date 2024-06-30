@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef, useContext, createContext, useMemo, useCallback, CSSProperties } from 'react';
+import { useForm } from 'react-hook-form';
 import {
   FaCheck,
   FaChevronLeft,
   FaChevronRight,
+  FaEnvelope,
   FaKey,
   FaLink,
   FaRegEnvelope,
@@ -17,8 +19,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useClerk, useSignIn, useSignUp, useUser } from '@clerk/nextjs';
 import { isClerkAPIResponseError } from '@clerk/nextjs/errors';
-import { useForm } from '@tanstack/react-form';
-import { zodValidator } from '@tanstack/zod-form-adapter';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import AppName from './_components/AppName';
 import { sleep } from './_lib/utils';
@@ -171,117 +172,80 @@ function SignedInPrompt() {
 function EmailForm() {
   // const { mutate: userCheck } = api.userCheck.useMutation();
   const { signIn } = useSignIn();
-  const { email, setEmail, setName, setIsRegistered, setStep } = useContext(AuthFlowContext);
-  const form = useForm({
+  const { email, setEmail, setIsRegistered, setStep } = useContext(AuthFlowContext);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<{ email: string }>({
+    mode: 'onChange',
     defaultValues: { email: email ?? '' },
-    validatorAdapter: zodValidator(),
-    validators: {
-      onChange: z.object({ email: z.string().email('Invalid email address') }),
-      onChangeAsyncDebounceMs: 500,
-    },
-    onSubmit: async ({ value: { email } }) => {
-      setEmail(email);
-      try {
-        // This will query clerk's FE API for user.
-        // IF user exists, it will return the user's name and auth method.
-        // IF user does not exist, it will throw an error.
-        const si = await signIn!.create({ identifier: email });
-        setIsRegistered(true);
-        // user exists
-        // Find their supported auth method
-        const { supportedFirstFactors } = si;
-        const passFf = supportedFirstFactors.find(ff => ff.strategy === 'password');
-        if (passFf) {
-          // User has password auth method
-          setStep('passwordField');
-          return;
-        }
-        // All users should have email_link auth method as their email is verified.
-        // Find the emailAddressId for the current email, typescript is not smart enough to know that ff is EmailLinkFactor | undefined
-        // And Clerk SDK don't export types of EmailLinkFactor, so we have to manually extract it.
-        type EmailLinkFactor = Extract<(typeof supportedFirstFactors)[number], { strategy: 'email_link' }>;
-        const ff = supportedFirstFactors.find(ff => ff.strategy === 'email_link' && ff.safeIdentifier === email) as
-          | EmailLinkFactor
-          | undefined;
-        if (ff) {
-          // Use email link auth method
-          setStep('emailLink', { clerkEmailId: ff.emailAddressId });
-          return;
-        }
-        console.error('No supported auth method found', supportedFirstFactors); // This should never happen
-        throw new Error('No supported auth method found');
-      } catch (e) {
-        if (isClerkAPIResponseError(e)) {
-          const error = e.errors[0]!;
-          if (error.code === 'form_identifier_not_found') {
-            setIsRegistered(false);
-            setStep('signUpNameField');
-          }
-        } else {
-          throw e;
-        }
-      }
-    },
+    resolver: zodResolver(z.object({ email: z.string().email('Invalid email address') })),
   });
+
+  const onSubmit: Parameters<typeof handleSubmit>[0] = async ({ email }) => {
+    setEmail(email);
+    try {
+      const si = await signIn!.create({ identifier: email });
+      setIsRegistered(true);
+      const { supportedFirstFactors } = si;
+      const passFf = supportedFirstFactors.find(ff => ff.strategy === 'password');
+      if (passFf) {
+        setStep('passwordField');
+        return;
+      }
+      const ff = supportedFirstFactors.find(ff => ff.strategy === 'email_link' && ff.safeIdentifier === email) as
+        | { emailAddressId: string }
+        | undefined;
+      if (ff) {
+        setStep('emailLink', { clerkEmailId: ff.emailAddressId });
+        return;
+      }
+      console.error('No supported auth method found', supportedFirstFactors); // This should never happen
+      throw new Error('No supported auth method found');
+    } catch (e) {
+      if (isClerkAPIResponseError(e)) {
+        const error = e.errors[0]!;
+        if (error.code === 'form_identifier_not_found') {
+          setIsRegistered(false);
+          setStep('signUpNameField');
+        }
+      } else {
+        throw e;
+      }
+    }
+  };
 
   return (
     <>
       <BackButton />
-      <form
-        className='flex h-full flex-col items-center justify-start gap-4'
-        onSubmit={e => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-      >
+      <form className='flex h-full flex-col items-center justify-start gap-4' onSubmit={handleSubmit(onSubmit)}>
         <h2 className='mb-4 text-2xl font-bold'>Enter your email</h2>
-        <form.Field
-          name='email'
-          children={field => (
-            <label
-              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
-              data-incorrect={field.state.meta.errors.length > 0}
-            >
-              <FaRegEnvelope />
-              <input
-                type='email'
-                placeholder='Email'
-                className='ml-2 grow'
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onChange={e => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors
-                ? field.state.meta.errors.map((error, i) => (
-                    <em role='alert' key={i} className='text-xs text-error'>
-                      {error}
-                    </em>
-                  ))
-                : null}
-            </label>
+
+        <div>
+          <label
+            className='input input-bordered input-primary flex items-center aria-[invalid=true]:input-error'
+            data-incorrect={!!errors.email}
+          >
+            <FaRegEnvelope />
+            <input type='email' placeholder='Email' className='ml-2 grow' {...register('email')} />
+          </label>
+          {errors.email ? (
+            <em role='alert' className='text-xs text-error'>
+              {errors.email.message}
+            </em>
+          ) : null}
+        </div>
+        <button type='submit' className='btn btn-primary btn-wide rounded-md p-2' disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              Submitting
+              <span className='loading loading-dots' />
+            </>
+          ) : (
+            'Submit'
           )}
-        />
-        <form.Subscribe
-          selector={state => [state.isSubmitting, state.canSubmit]}
-          children={([isSubmitting, canSubmit]) => (
-            <button
-              type='submit'
-              className='btn btn-primary btn-wide rounded-md p-2'
-              disabled={isSubmitting || !canSubmit}
-            >
-              {isSubmitting ? (
-                <>
-                  Submitting
-                  <span className='loading loading-dots' />
-                </>
-              ) : (
-                'Submit'
-              )}
-            </button>
-          )}
-        />
+        </button>
       </form>
     </>
   );
@@ -291,104 +255,67 @@ function EmailForm() {
 // #region SignUpNameForm
 function SignUpNameForm() {
   const { email, name, setName, setStep } = useContext(AuthFlowContext);
-  const form = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<{ first: string; last: string }>({
+    mode: 'onChange',
     defaultValues: { first: name?.first ?? '', last: name?.last ?? '' },
-    validatorAdapter: zodValidator(),
-    validators: {
-      onChange: z.object({
+    resolver: zodResolver(
+      z.object({
         first: z.string().min(2, 'First name must be at least 2 characters long'),
         last: z.string().min(2, 'Last name must be at least 2 characters long'),
       }),
-    },
-    onSubmit: ({ value: { first, last } }) => {
-      setName({ first, last });
-      setStep('signUpMethodSelect');
-    },
+    ),
   });
+
+  const onSubmit: Parameters<typeof handleSubmit>[0] = ({ first, last }) => {
+    setName({ first, last });
+    setStep('signUpMethodSelect');
+  };
 
   return (
     <>
       <BackButton />
-      <form
-        className='flex h-full flex-col items-center justify-start gap-4'
-        onSubmit={e => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-      >
-        <h2 className='mb-4 text-xl font-bold'>Enter your name</h2>
-        <form.Field
-          name='first'
-          children={field => (
-            <label
-              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
-              data-incorrect={field.state.meta.errors.length > 0}
-            >
-              <input
-                type='text'
-                placeholder='First Name'
-                className='ml-2 grow'
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onChange={e => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors
-                ? field.state.meta.errors.map((error, i) => (
-                    <em role='alert' key={i} className='text-xs text-error'>
-                      {error}
-                    </em>
-                  ))
-                : null}
-            </label>
+      <form className='flex h-full flex-col items-center justify-start gap-2' onSubmit={handleSubmit(onSubmit)}>
+        <h2 className='mb-2 text-xl font-bold'>Enter your name</h2>
+        <div>
+          <label
+            className='input input-bordered input-primary flex items-center aria-[invalid=true]:input-error'
+            data-incorrect={!!errors.first}
+          >
+            <input type='text' placeholder='First Name' className='ml-2 grow' {...register('first')} />
+          </label>
+          {errors.first ? (
+            <em role='alert' className='text-xs text-error'>
+              {errors.first.message}
+            </em>
+          ) : null}
+        </div>
+        <div>
+          <label
+            className='input input-bordered input-primary flex items-center aria-[invalid=true]:input-error'
+            data-incorrect={!!errors.last}
+          >
+            <input type='text' placeholder='Last Name' className='ml-2 grow' {...register('last')} />
+          </label>
+          {errors.last ? (
+            <em role='alert' className='text-xs text-error'>
+              {errors.last.message}
+            </em>
+          ) : null}
+        </div>
+        <button type='submit' className='btn btn-primary btn-wide rounded-md p-2' disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              Submitting
+              <span className='loading loading-dots' />
+            </>
+          ) : (
+            'Submit'
           )}
-        />
-        <form.Field
-          name='last'
-          children={field => (
-            <label
-              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
-              data-incorrect={field.state.meta.errors.length > 0}
-            >
-              <input
-                type='text'
-                placeholder='Last Name'
-                className='ml-2 grow'
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onChange={e => field.handleChange(e.target.value)}
-              />
-              {field.state.meta.errors
-                ? field.state.meta.errors.map((error, i) => (
-                    <em role='alert' key={i} className='text-xs text-error'>
-                      {error}
-                    </em>
-                  ))
-                : null}
-            </label>
-          )}
-        />
-        <form.Subscribe
-          selector={state => [state.isSubmitting, state.canSubmit]}
-          children={([isSubmitting, canSubmit]) => (
-            <button
-              type='submit'
-              className='btn btn-primary btn-wide rounded-md p-2'
-              disabled={isSubmitting || !canSubmit}
-            >
-              {isSubmitting ? (
-                <>
-                  Submitting
-                  <span className='loading loading-dots' />
-                </>
-              ) : (
-                'Submit'
-              )}
-            </button>
-          )}
-        />
+        </button>
         <small className='text-xs text-neutral-content'>Email: {email}</small>
       </form>
     </>
@@ -452,162 +379,128 @@ function PasswordField() {
     throw new Error('Email and name must be set before rendering PasswordField');
   }
 
-  const form = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<{ password: string; confirmPassword?: string }>({
+    mode: 'onChange',
     defaultValues: { password: '', confirmPassword: '' },
-    validatorAdapter: zodValidator(),
-    validators: {
-      onChange: isRegistered
-        ? z.object({
-            password: z.string().min(10, 'Password must be at least 10 characters long'),
-          })
-        : z
-            .object({
-              password: z.string().min(10, 'Password must be at least 10 characters long'),
-              confirmPassword: z.string(),
-            })
-            .refine(data => data.password === data.confirmPassword, {
-              path: ['confirmPassword'],
-              message: 'Passwords do not match',
-            }),
-    },
-    onSubmit: async ({ value: { password } }) => {
-      try {
-        if (isRegistered) {
-          // Attempt to sign in with password.
-          // If fails, throw error.
-          // If status = complete, set active session.
-          // If incomplete, ie more steps are needed, 2FA, new password, etc, supposed to handle but not handled here.
-          const attempt = await signIn!.create({ identifier: email, password });
-          if (attempt.status === 'complete') {
-            setActive!({ session: attempt.createdSessionId });
-          } else {
-            // TODO: Handle other statuses
-            throw new Error(`Unhandled status for sign in attempt: ${attempt.status}`);
-          }
+    resolver: zodResolver(
+      z
+        .object({
+          password: z.string().min(10, 'Password must be at least 10 characters long'),
+          confirmPassword: z.string().nullable(),
+        })
+        .refine(data => isRegistered || data.confirmPassword === data.password, {
+          message: 'Passwords do not match',
+          path: ['confirmPassword'],
+        }),
+    ),
+  });
+
+  const onSubmit: Parameters<typeof handleSubmit>[0] = async ({ password }) => {
+    try {
+      if (isRegistered) {
+        // Attempt to sign in with password.
+        // If fails, throw error.
+        // If status = complete, set active session.
+        // If incomplete, ie more steps are needed, 2FA, new password, etc, supposed to handle but not handled here.
+        const attempt = await signIn!.create({ identifier: email, password });
+        if (attempt.status === 'complete') {
+          setActive!({ session: attempt.createdSessionId });
         } else {
-          // Attempt to sign up with email, name and password.
-          // If throw error, means fail. ie password too weak, detected as compromised, etc. (based on setting in Clerk)
-          // If status = complete, set active session. email verification is off, so no need to verify email. (not for this app)
-          // If missing requirements, check if email is unverified, if so, verify email.
-          // There is status of abandoned, idk what it is for.
-          const attempt = await signUp!.create({
-            emailAddress: email,
-            password,
-            firstName: name.first,
-            lastName: name.last,
-          });
-          if (attempt.status === 'complete') {
-            setActive!({ session: attempt.createdSessionId });
-          } else if (attempt.status === 'missing_requirements') {
-            if (attempt.unverifiedFields.includes('email_address')) {
-              setStep('emailLink');
-            }
-            // TODO: Handle other missing requirements
-          } else {
-            // TODO: Handle other statuses
-            throw new Error(`Unhandled status for sign up attempt: ${attempt.status}`);
-          }
+          // TODO: Handle other statuses
+          throw new Error(`Unhandled status for sign in attempt: ${attempt.status}`);
         }
-      } catch (e) {
-        if (isClerkAPIResponseError(e)) {
-          form.setFieldMeta('password', data => ({
-            ...data,
-            errors: data.errors.concat(...e.errors.map(e => e.message)),
-          }));
+      } else {
+        // Attempt to sign up with email, name and password.
+        // If throw error, means fail. ie password too weak, detected as compromised, etc. (based on setting in Clerk)
+        // If status = complete, set active session. email verification is off, so no need to verify email. (not for this app)
+        // If missing requirements, check if email is unverified, if so, verify email.
+        // There is status of abandoned, idk what it is for.
+        const attempt = await signUp!.create({
+          emailAddress: email,
+          password,
+          firstName: name.first,
+          lastName: name.last,
+        });
+        if (attempt.status === 'complete') {
+          setActive!({ session: attempt.createdSessionId });
+        } else if (attempt.status === 'missing_requirements') {
+          if (attempt.unverifiedFields.includes('email_address')) {
+            setStep('emailLink');
+          }
+          // TODO: Handle other missing requirements
         } else {
-          throw e;
+          // TODO: Handle other statuses
+          throw new Error(`Unhandled status for sign up attempt: ${attempt.status}`);
         }
       }
-    },
-  });
+    } catch (e) {
+      if (isClerkAPIResponseError(e)) {
+        const errorMsg = e.errors.map(e => e.message);
+        console.error('Clerk API error:', errorMsg);
+        setError('password', { message: errorMsg.join(', ') });
+      } else {
+        throw e;
+      }
+    }
+  };
 
   return (
     <>
       <BackButton />
-      <form
-        className='flex h-full flex-col items-center justify-start gap-4'
-        onSubmit={e => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-      >
-        <h2 className='mb-4 text-xl font-bold'>{isRegistered ? 'Enter your password' : 'Create a password'}</h2>
-        <form.Field
-          name='password'
-          children={field => (
+      <form className='flex h-full flex-col items-center justify-start gap-2' onSubmit={handleSubmit(onSubmit)}>
+        <h2 className='mb-2 text-xl font-bold'>{isRegistered ? 'Enter your password' : 'Create a password'}</h2>
+
+        <div>
+          <label
+            className='input input-bordered input-primary flex items-center aria-[invalid=true]:input-error'
+            aria-invalid={!!errors.password}
+          >
+            <FaKey />
+            <input type='password' placeholder='Password' className='ml-2 grow' {...register('password')} />
+          </label>
+
+          {errors.password ? (
+            <em role='alert' className='text-xs text-error'>
+              {errors.password.message}
+            </em>
+          ) : null}
+        </div>
+        {!isRegistered && (
+          <div>
             <label
-              className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
-              data-incorrect={field.state.meta.errors.length > 0}
+              className='input input-bordered input-primary flex items-center aria-[invalid=true]:input-error'
+              data-incorrect={!!errors.confirmPassword}
             >
               <FaKey />
               <input
                 type='password'
-                placeholder='Password'
+                placeholder='Confirm Password'
                 className='ml-2 grow'
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                onChange={e => field.handleChange(e.target.value)}
+                {...register('confirmPassword')}
               />
-              {field.state.meta.errors
-                ? field.state.meta.errors.map((error, i) => (
-                    <em role='alert' key={i} className='text-xs text-error'>
-                      {error}
-                    </em>
-                  ))
-                : null}
             </label>
-          )}
-        />
-        {!isRegistered && (
-          <form.Field
-            name='confirmPassword'
-            children={field => (
-              <label
-                className='input input-bordered input-primary flex items-center data-[incorrect=true]:input-error'
-                data-incorrect={field.state.meta.errors.length > 0}
-              >
-                <FaKey />
-                <input
-                  type='password'
-                  placeholder='Confirm Password'
-                  className='ml-2 grow'
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value}
-                  onChange={e => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.errors
-                  ? field.state.meta.errors.map((error, i) => (
-                      <em role='alert' key={i} className='text-xs text-error'>
-                        {error}
-                      </em>
-                    ))
-                  : null}
-              </label>
-            )}
-          />
+            {errors.confirmPassword ? (
+              <em role='alert' className='text-xs text-error'>
+                {errors.confirmPassword.message}
+              </em>
+            ) : null}
+          </div>
         )}
-        <form.Subscribe
-          selector={state => [state.isSubmitting, state.canSubmit]}
-          children={([isSubmitting, canSubmit]) => (
-            <button
-              type='submit'
-              className='btn btn-primary btn-wide rounded-md p-2'
-              disabled={isSubmitting || !canSubmit}
-            >
-              {isSubmitting ? (
-                <>
-                  Submitting
-                  <span className='loading loading-dots' />
-                </>
-              ) : (
-                'Submit'
-              )}
-            </button>
+        <button type='submit' className='btn btn-primary btn-wide rounded-md p-2' disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              Submitting
+              <span className='loading loading-dots' />
+            </>
+          ) : (
+            'Submit'
           )}
-        />
+        </button>
         {isRegistered && (
           <button type='button' className='btn btn-ghost btn-sm' onClick={() => setStep('emailLink')}>
             Use email link instead
@@ -681,6 +574,16 @@ function EmailLink() {
     }
   }, [isRegistered, setActive, signIn, signUp, stepMeta]);
 
+  const domain = email!.split('@')[1]!;
+  const domainToInfo = {
+    'gmail.com': { href: 'https://mail.google.com', name: 'Gamil' },
+    'yahoo.com': { href: 'https://mail.yahoo.com', name: 'Yahoo Mail' },
+    'outlook.com': { href: 'https://outlook.live.com/mail/', name: 'Outlook' },
+    'hotmail.com': { href: 'https://outlook.live.com/mail/', name: 'Outlook' },
+  } as Record<string, { href: string; name: string }>;
+
+  const knownInfo = domainToInfo[domain];
+
   useEffect(() => {
     return () => {
       if (cancelFuncRef.current) {
@@ -692,31 +595,38 @@ function EmailLink() {
   return (
     <>
       <BackButton disabled={emailState !== 'delay'} />
-      <div className='flex h-full flex-col items-center justify-start gap-2'>
+      <div className='flex h-full flex-col items-center justify-start gap-2 px-4'>
         {emailState === 'delay' ? (
           <>
             <h2 className='mb-4 text-xl font-bold'>Is email correct?</h2>
             <p className='text-center'>Email: {email}</p>
-            <p className='text-center'>We will send you an email shortly to verify your email address.</p>
-            <button type='button' className='btn btn-success rounded-md p-2' onClick={sentAndVerifyEmail}>
+            <p className='text-pretty text-center'>We will send you an email to verify your email address.</p>
+            <button type='button' className='btn btn-success w-full rounded-md p-2' onClick={sentAndVerifyEmail}>
               <FaCheck />
               Yes, send email
             </button>
-            <button type='button' className='btn btn-error rounded-md p-2' onClick={() => setStep('emailField')}>
+            <button type='button' className='btn btn-error w-full rounded-md p-2' onClick={() => setStep('emailField')}>
               <FaXmark />
               No, redo everything
             </button>
           </>
         ) : emailState === 'sent' ? (
           <>
-            <h2 className='mb-4 text-xl font-bold'>Verification email sent to</h2>
-            <p className='text-center'>{email}</p>
+            <h2 className='mb-4 text-xl font-bold'>Verification email sent</h2>
+            <p className='text-center'>Email: {email}</p>
             <p className='text-center'>If you did not receive the email, please check your spam folder.</p>
             <span className='loading loading-dots loading-lg text-primary' />
+            {knownInfo ? (
+              <a href={knownInfo.href} target='_blank' rel='noreferrer' className='btn btn-primary rounded-md p-2'>
+                <FaRegEnvelope />
+                Open {knownInfo.name} in new tab
+              </a>
+            ) : null}
           </>
         ) : emailState === 'expired' ? (
           <>
             <h2 className='mb-4 text-xl font-bold'>Email link expired</h2>
+            <p className='text-center'>Email: {email}</p>
             <p className='text-center'>The email link has expired.</p>
             <div className='h-12 w-12 animate-pulse rounded-full bg-error p-2 text-error-content'>
               <FaXmark size='2rem' />
