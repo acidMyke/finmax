@@ -2,19 +2,20 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { FaChevronLeft, FaChevronRight, FaPlus } from 'react-icons/fa';
-import { LuArrowUpRight } from 'react-icons/lu';
 import { useUser } from '@clerk/nextjs';
 import { DateTime } from 'luxon';
+import { twMerge } from 'tailwind-merge';
 import { Dropdown } from '~/app/_components/Dropdown';
 import api from '~lib/trpc';
 
 export default function DashboardPage() {
   const { user } = useUser();
-  const [accFilter, setAccFilter] = useState<string | null>(null);
+  const [accFilter, setAccFilter] = useState<string | undefined>(undefined);
   const [mthYrFilter, setMthYrFilter] = useState<DateTime>(DateTime.now().startOf('month'));
   const userIdsLabelsQuery = api.users.idsLabels.useQuery();
   const transactionSummaryQuery = api.transactions.summary.useQuery({
     dateRange: { month: mthYrFilter.month, year: mthYrFilter.year },
+    accountId: accFilter ?? undefined,
   });
   const mthYrSelectorDdRef = useRef<HTMLDetailsElement>(null);
 
@@ -41,68 +42,82 @@ export default function DashboardPage() {
         </button>
       </h1>
 
-      {/* Display the transaction summary filters */}
-      <section className='mt-6'>
-        <div className='flex flex-row items-center justify-start gap-2'>
-          <p className='text-lg font-semibold'>Transaction summary for</p>
-          {userIdsLabelsQuery.isLoading ? (
-            <div className='skeleton h-10 w-40' />
-          ) : (
-            <Dropdown
-              onChange={setAccFilter}
-              options={userIdsLabelsQuery.data!.accounts}
-              classNames={{
-                summaryElement: 'min-w-40 justify-between btn-sm trucate ',
-                ulElement: 'w-40 max-h-28 flex-nowrap overflow-y-auto',
-              }}
-            />
-          )}
-          <p className='text-lg font-semibold'>in the month of</p>
+      <div className='mx-auto flex flex-col gap-x-4 lg:flex-row'>
+        <div className='flex flex-1 flex-col gap-2'>
+          {/* Display the transaction summary filters */}
+          <section className='mt-6'>
+            <div className='flex flex-row items-center justify-start gap-2'>
+              <p className='text-lg font-semibold'>Transaction summary for</p>
+              {userIdsLabelsQuery.isLoading ? (
+                <div className='skeleton h-10 w-40' />
+              ) : (
+                <Dropdown
+                  onChange={id => setAccFilter(id === 'undefined' ? undefined : id)}
+                  options={[{ id: 'undefined', label: 'All Accounts' }, ...userIdsLabelsQuery.data!.accounts]}
+                  classNames={{
+                    summaryElement: 'min-w-40 justify-between btn-sm trucate',
+                    ulElement: 'w-40 max-h-28 flex-nowrap overflow-y-auto bg-base-200 rounded-b-lg',
+                  }}
+                />
+              )}
+              <p className='text-lg font-semibold'>in the month of</p>
 
-          <div className='join'>
-            <button onClick={() => setMthYrFilter(previousMonth)} className='btn join-item btn-neutral btn-sm'>
-              <FaChevronLeft size={18} />
-            </button>
-            <div className='btn join-item btn-neutral no-animation btn-sm w-24 cursor-default'>
-              {mthYrFilter.toFormat('LLL yyyy')}
+              <div className='join'>
+                <button onClick={() => setMthYrFilter(previousMonth)} className='btn join-item btn-neutral btn-sm'>
+                  <FaChevronLeft size={18} />
+                </button>
+                <div className='btn join-item btn-neutral no-animation btn-sm w-24 cursor-default'>
+                  {mthYrFilter.toFormat('LLL yyyy')}
+                </div>
+                <button
+                  disabled={nextDisabled}
+                  onClick={() => setMthYrFilter(nextMonth)}
+                  className='btn join-item btn-neutral btn-sm'
+                >
+                  <FaChevronRight size={18} />
+                </button>
+              </div>
             </div>
-            <button
-              disabled={nextDisabled}
-              onClick={() => setMthYrFilter(nextMonth)}
-              className='btn join-item btn-neutral btn-sm'
-            >
-              <FaChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* Transaction Summary */}
-      <section className='mt-6'>
-        <div className='flex w-full flex-col lg:flex-row'>
-          {transactionSummaryQuery.isLoading ? (
-            Array.from({ length: 3 }).map((_, i) => <div key={i} className='skeleton flex-1' />)
-          ) : (
-            <>
-              <div className='grid flex-1 grid-cols-2 gap-2 rounded-lg p-2 max-lg:w-full lg:h-full'>
-                <div className='size-4 rounded-full bg-success' />
-                <p className='text-lg font-semibold'>Money In</p>
-                <p className='col-span-2 text-lg font-semibold'>{transactionSummaryQuery.data!.moneyInSum}</p>
-              </div>
-              <div className='grid flex-1 grid-cols-2 gap-2 rounded-lg p-2 max-lg:w-full lg:h-full'>
-                <div className='size-4 rounded-full bg-accent' />
-                <p className='text-lg font-semibold'>Net </p>
-                <p className='col-span-2 text-lg font-semibold'>{transactionSummaryQuery.data!.netSum}</p>
-              </div>
-              <div className='grid flex-1 grid-cols-2 gap-2 rounded-lg p-2 max-lg:w-full lg:h-full'>
-                <div className='size-4 rounded-full bg-error' />
-                <p className='text-lg font-semibold'>Money Out</p>
-                <p className='col-span-2 text-lg font-semibold'>{transactionSummaryQuery.data!.moneyOutSum}</p>
-              </div>
-            </>
-          )}
+          {/* Transaction Summary */}
+          <section className='mt-6'>
+            <div className='flex w-full flex-col justify-between gap-4 md:flex-row'>
+              {transactionSummaryQuery.isLoading
+                ? Array.from({ length: 3 }).map((_, i) => <div key={i} className='skeleton h-24 flex-1' />)
+                : [
+                    {
+                      label: 'Money In',
+                      elipsisColorClass: 'bg-success',
+                      value: transactionSummaryQuery.data!.moneyInSum,
+                    },
+                    {
+                      label: 'Net Cash flow',
+                      elipsisColorClass: 'bg-accent',
+                      value: transactionSummaryQuery.data!.netSum,
+                    },
+                    {
+                      label: 'Money Out',
+                      elipsisColorClass: 'bg-error',
+                      value: transactionSummaryQuery.data!.moneyOutSum,
+                    },
+                  ].map(({ label, elipsisColorClass, value }) => (
+                    <div
+                      key={label}
+                      className='grid h-24 w-full flex-1 grid-cols-[min-content] content-center items-center justify-items-start gap-2 rounded-lg border border-primary-content px-4'
+                    >
+                      <div className={twMerge('size-4 rounded-full', elipsisColorClass)} />
+                      <p className='col-start-2 row-start-1 text-lg font-semibold'>{label}</p>
+                      <p className='col-span-2 indent-2 text-2xl font-semibold'>
+                        ${value?.slice(0, -1) ?? (0).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+            </div>
+          </section>
         </div>
-      </section>
+        <div className='flex flex-1 flex-col gap-2'></div>
+      </div>
     </>
   );
 }
