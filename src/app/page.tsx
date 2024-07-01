@@ -189,16 +189,24 @@ function EmailForm() {
       const si = await signIn!.create({ identifier: email });
       setIsRegistered(true);
       const { supportedFirstFactors } = si;
-      const passFf = supportedFirstFactors.find(ff => ff.strategy === 'password');
-      if (passFf) {
-        setStep('passwordField');
+      type FirstFactor = (typeof supportedFirstFactors)[0];
+      type PasswordFF = Extract<FirstFactor, { strategy: 'password' }>;
+      type EmailLinkFF = Extract<FirstFactor, { strategy: 'email_link' }>;
+      let pwff: PasswordFF | undefined = undefined;
+      let elff: EmailLinkFF | undefined = undefined;
+      for (const ff of supportedFirstFactors) {
+        if (ff.strategy === 'password') pwff = ff as PasswordFF;
+        else if (ff.strategy === 'email_link') elff = ff as EmailLinkFF;
+      }
+
+      // If user setup password, go to password field
+      // User's email is always verified, in-case when user forget password, they can login with email link
+      if (pwff) {
+        setStep('passwordField', elff ? { clerkEmailId: elff.safeIdentifier } : undefined);
         return;
       }
-      const ff = supportedFirstFactors.find(ff => ff.strategy === 'email_link' && ff.safeIdentifier === email) as
-        | { emailAddressId: string }
-        | undefined;
-      if (ff) {
-        setStep('emailLink', { clerkEmailId: ff.emailAddressId });
+      if (elff) {
+        setStep('emailLink', { clerkEmailId: elff.safeIdentifier });
         return;
       }
       console.error('No supported auth method found', supportedFirstFactors); // This should never happen
@@ -502,7 +510,7 @@ function PasswordField() {
           )}
         </button>
         {isRegistered && (
-          <button type='button' className='btn btn-ghost btn-sm' onClick={() => setStep('emailLink')}>
+          <button type='button' className='btn btn-neutral btn-wide' onClick={() => setStep('emailLink')}>
             Use email link instead
           </button>
         )}
